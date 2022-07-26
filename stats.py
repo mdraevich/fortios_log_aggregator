@@ -3,7 +3,7 @@
 """
 
 INPUT:
-- FortiGate logs in CSV format 
+- FortiGate logs in CSV/Log format (format is determined by file extension)
 
 OUTPUT:
 - returns the percentage occurence of 
@@ -13,6 +13,7 @@ OUTPUT:
 
 import os
 import sys
+import shlex
 import traceback
 
 
@@ -52,6 +53,31 @@ def update_status(current_value, max_value):
                                         bcolors.OKBLUE + bcolors.BOLD)
 
 
+def parse_csv_line(obj):
+    parsed_line = obj
+    parsed_line = [ el.replace('"', "").strip().split("=", 1) for el in parsed_line.split(",") ] 
+    parsed_line = [ el for el in parsed_line if len(el) == 2 ]
+    #
+    result = {}
+    for key, value in parsed_line:
+        result[key] = value
+    #
+    return result
+
+
+def parse_log_line(obj):
+    parsed_line = obj
+    parsed_line = [ el.replace('"', "").strip().split("=", 1) for el in shlex.split(parsed_line) ] 
+    parsed_line = [ el for el in parsed_line if len(el) == 2 ]
+    #
+    result = {}
+    for key, value in parsed_line:
+        result[key] = value
+    #
+    return result
+
+
+
 def increment(dict_obj, key):
     if key in dict_obj:
         dict_obj[key] += 1
@@ -64,19 +90,21 @@ def increment(dict_obj, key):
         }
 
 
-assert len(sys.argv) == 2  # only program name & input csv file 
+assert len(sys.argv) == 2  # only program name & input csv/log file 
 
 
 try: 
-    csv_file_path = os.path.abspath(sys.argv[1])
-    number_lines = sum(1 for line in open(csv_file_path, "r", errors="replace"))
+    input_file_path = os.path.abspath(sys.argv[1])
+    input_file_format = input_file_path.split(".")[-1]
+    number_lines = sum(1 for line in open(input_file_path, "r", errors="replace"))
 except Exception as e: 
     print("ERROR: Failed to determine the path to file...")
     print(e)
     exit()
 
 
-color_print("Filepath:       {}".format(csv_file_path), bcolors.HEADER + bcolors.BOLD)
+color_print("Filepath:       {}".format(input_file_path), bcolors.HEADER + bcolors.BOLD)
+color_print("Format:         {}".format(input_file_format), bcolors.HEADER + bcolors.BOLD)
 color_print("Size (lines):   {}".format(number_lines), bcolors.HEADER + bcolors.BOLD)
 print()
 print()
@@ -86,18 +114,13 @@ print()
 stats = {}
 description = {}
 processed_lines = 0
-with open(csv_file_path, "r", errors="replace") as csv_file:
+with open(input_file_path, "r", errors="replace") as csv_file:
     for line in csv_file:
         try:
-            parsed_line = line
-            parsed_line = [ el.replace('"', "").strip().split("=", 1) for el in parsed_line.split(",") ] 
-            parsed_line = [ el for el in parsed_line if len(el) == 2 ]
-            #
-            entry = {}
-            for key, value in parsed_line:
-                entry[key] = value
-            #
-            #
+            if input_file_format == "csv":
+                entry = parse_csv_line(line)
+            if input_file_format == "log":
+                entry = parse_log_line(line)
             #
             logid = entry["logid"] 
             if logid not in stats.keys():

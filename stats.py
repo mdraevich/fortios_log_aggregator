@@ -13,6 +13,7 @@ OUTPUT:
 
 import os
 import sys
+import traceback
 
 
 
@@ -113,8 +114,7 @@ with open(csv_file_path, "r", errors="replace") as csv_file:
             if processed_lines % 300 == 0 or processed_lines == number_lines:
                 update_status(processed_lines, number_lines)
         except Exception as e:
-            color_print(str(e), bcolors.FAIL)
-
+            traceback.print_exc()
 
 
 
